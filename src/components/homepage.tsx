@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Link, user } from "@nextui-org/react";
 import { Input } from "@nextui-org/react";
 import { ethers, parseEther } from "ethers";
+import io from "socket.io-client";
 
 import EscrowArtifact from "../app/artifacts/contracts/escrow.sol/Escrow.json";
 
@@ -24,6 +25,7 @@ export default function Homepage() {
 
     const [contractAddress, setContractAddress] = useState("");
 
+
     const connectWallet = async () => {
         try {
             if (window.ethereum) {
@@ -33,9 +35,6 @@ export default function Homepage() {
                 setSigner(signer)
                 const address = await signer.getAddress();
                 setAddress(address);
-
-
-                // Imposta lo stato di connessione a true
                 setConn(true);
 
 
@@ -61,15 +60,13 @@ export default function Homepage() {
         console.log("Beneficiary:", beneficiary);
         console.log("Value :", value);
 
-        //setWaiting(false);  Ripristina lo stato di waiting a false quando l'azione è completata
+        //setWaiting(false);  
     };
 
     const deploy = async (e: any) => {
         e.preventDefault();
         try {
-            console.log("pre ", value)
             const ethValue = ethers.parseEther(value);
-            console.log("post ", ethValue)
             const ContractFactory = new ethers.ContractFactory(EscrowArtifact.abi, EscrowArtifact.bytecode, signer);
             const deployedContract = await ContractFactory.deploy(escrow, beneficiary, { value: ethValue });
             console.log("Deploying contract...");
@@ -78,22 +75,19 @@ export default function Homepage() {
                 const receipt = await deploymentTxResponse.wait();
                 if (receipt?.contractAddress) {
                     setContractAddress(receipt.contractAddress);
+                    // Invia l'agente al server Socket.IO
+                    const socket = io("http://localhost:3000");
+                    socket.emit("agent", escrow);
                 } else {
                     throw new Error("Contract address is null");
                 }
             } else {
                 throw new Error("Deployment transaction response is null");
             }
-
-            // Mostra un messaggio di conferma
-
-
-            // Ripristina lo stato di waiting a false quando l'azione è completata
-            //setWaiting(false);
         } catch (error) {
             console.error("Error deploying contract:", error);
             alert("An error occurred while deploying the contract.");
-            setWaiting(false); // Ripristina lo stato di waiting a false in caso di errore
+            setWaiting(false);
         }
     }
 
@@ -103,10 +97,12 @@ export default function Homepage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-12 ml-24 mr-24">
             <div className="col-span-1"></div>
             <div className="col-span-2 lg:col-span-1 flex justify-center items-center">
-                <Button color="primary" variant="ghost" size="lg" className="text-xl">
-                    Are you an Escrow Agent?
-                </Button>
-            </div>
+                <Link href="/agent">
+                    <Button color="primary" variant="ghost" size="lg" className="text-xl">
+                        Are you an Escrow Agent?
+                    </Button>
+                </Link>
+            </div >
             <div className="col-span-1"></div>
             <div className="col-span-2 lg:col-span-1 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center ">
                 {!conn ? (
@@ -197,8 +193,8 @@ export default function Homepage() {
                         </div>
                         {contractAddress ? (
                             <>
-                                <Link href={`https://sepolia.etherscan.io/address/${contractAddress}`}>
-                                    <a target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">View Contract on Etherscan</a>
+                                <Link href={`https://sepolia.etherscan.io/address/${contractAddress}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">
+                                    View Contract on Etherscan
                                 </Link>
                             </>
                         ) : (
@@ -210,6 +206,6 @@ export default function Homepage() {
                     <div></div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
