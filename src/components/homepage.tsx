@@ -1,128 +1,215 @@
 import React, { useState } from "react";
-import { Button } from "@nextui-org/react";
+import { Button, Link, user } from "@nextui-org/react";
 import { Input } from "@nextui-org/react";
+import { ethers, parseEther } from "ethers";
+
+import EscrowArtifact from "../app/artifacts/contracts/escrow.sol/Escrow.json";
+
+declare global {
+    interface Window {
+        ethereum: any
+    }
+}
 
 export default function Homepage() {
     const [conn, setConn] = useState(false);
-    const [escrow, setEscrow] = useState("");
+    const [waiting, setWaiting] = useState(false);
+    const [address, setAddress] = useState("");
 
-    const [showBeneficiary, setShowBeneficiary] = useState(false);
+    const [signer, setSigner] = useState<ethers.Signer>();
+    const [escrow, setEscrow] = useState("");
     const [beneficiary, setBeneficiary] = useState("");
 
-    const [showValue, setShowValue] = useState(false);
-    const [value, setValue] = useState("");
+    const [value, setValue] = useState("")
 
-    const agentSubmit = (e: any) => {
-        e.preventDefault();
-        setShowBeneficiary(true);
+    const [contractAddress, setContractAddress] = useState("");
+
+    const connectWallet = async () => {
+        try {
+            if (window.ethereum) {
+                const provider = new ethers.BrowserProvider(window.ethereum)
+                await provider.send("eth_requestAccounts", []);
+                const signer = await provider.getSigner();
+                setSigner(signer)
+                const address = await signer.getAddress();
+                setAddress(address);
+
+
+                // Imposta lo stato di connessione a true
+                setConn(true);
+
+
+            } else {
+                alert("Please install MetaMask to connect your wallet.");
+            }
+        } catch (error) {
+            console.error("Error connecting wallet:", error);
+            alert("An error occurred while connecting your wallet.");
+        }
     };
 
-    const beneficiarySubmit = (e: any) => {
+    const submit = async (e: any) => {
         e.preventDefault();
-        setShowValue(true);
-        // Aggiungere ulteriori azioni come inviare i dati al server
-    };
+        setWaiting(true);
 
-    const valueSubmit = (e: any) => {
-        e.preventDefault();
+        //accetta la tx
+        //manda in wait
+        //azione asincrona in attesa che l'agent accetti la tx
+
+
         console.log("Escrow Agent:", escrow);
         console.log("Beneficiary:", beneficiary);
-        console.log("Value :", value)
-        // Aggiungere ulteriori azioni come inviare i dati al server
+        console.log("Value :", value);
+
+        //setWaiting(false);  Ripristina lo stato di waiting a false quando l'azione è completata
     };
 
+    const deploy = async (e: any) => {
+        e.preventDefault();
+        try {
+            console.log("pre ", value)
+            const ethValue = ethers.parseEther(value);
+            console.log("post ", ethValue)
+            const ContractFactory = new ethers.ContractFactory(EscrowArtifact.abi, EscrowArtifact.bytecode, signer);
+            const deployedContract = await ContractFactory.deploy(escrow, beneficiary, { value: ethValue });
+            console.log("Deploying contract...");
+            const deploymentTxResponse = await deployedContract.deploymentTransaction();
+            if (deploymentTxResponse) {
+                const receipt = await deploymentTxResponse.wait();
+                if (receipt?.contractAddress) {
+                    setContractAddress(receipt.contractAddress);
+                } else {
+                    throw new Error("Contract address is null");
+                }
+            } else {
+                throw new Error("Deployment transaction response is null");
+            }
+
+            // Mostra un messaggio di conferma
+
+
+            // Ripristina lo stato di waiting a false quando l'azione è completata
+            //setWaiting(false);
+        } catch (error) {
+            console.error("Error deploying contract:", error);
+            alert("An error occurred while deploying the contract.");
+            setWaiting(false); // Ripristina lo stato di waiting a false in caso di errore
+        }
+    }
+
+
+
     return (
-        <div className="grid grid-cols-3 gap-4 mt-12 ml-24 mr-24">
-            <div className="col"></div>
-            <div className="col flex justify-center items-center">
-                <Button color="primary" variant="ghost" size="lg" className="text-xl sm:text-sm md:text-base">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-12 ml-24 mr-24">
+            <div className="col-span-1"></div>
+            <div className="col-span-2 lg:col-span-1 flex justify-center items-center">
+                <Button color="primary" variant="ghost" size="lg" className="text-xl">
                     Are you an Escrow Agent?
                 </Button>
             </div>
-            <div className="col"></div>
-            <div className="col rounded p-4 py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center ">
+            <div className="col-span-1"></div>
+            <div className="col-span-2 lg:col-span-1 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center ">
                 {!conn ? (
                     <button
-                        onClick={() => setConn(true)}
+                        onClick={connectWallet}
                         className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
                     >
                         Connect
                     </button>
                 ) : (
-                    <div className="animate__animated animate__fadeIn">
-                        <form className="flex flex-col items-center" onSubmit={agentSubmit}>
-                            <Input
-                                isRequired
-                                type="text"
-                                label="Escrow Agent"
-                                placeholder="0x000000.."
-                                size="lg"
-                                className="mr-4 mb-4 font-bold text-xl "
-                                value={escrow}
-                                onChange={(e) => setEscrow(e.target.value)}
-                            />
-                            <Button type="submit" color="primary" variant="ghost" size="lg" className="text-xl">
-                                {">"}
-                            </Button>
-                        </form>
+                    <div className="animate__animated animate__fadeIn w-full flex flex-col items-center">
+                        {waiting ? (
+                            <p>Waiting... :)</p>
+                        ) : (
+                            <>
+                                <form className="flex flex-col items-center" onSubmit={submit}>
+                                    <Input
+                                        isRequired
+                                        type="text"
+                                        label="Escrow Agent"
+                                        placeholder="0x000000.."
+                                        size="lg"
+                                        className="mr-4 mb-4 font-bold text-xl "
+                                        value={escrow}
+                                        onChange={(e) => setEscrow(e.target.value)}
+                                    />
+                                    <Input
+                                        isRequired
+                                        type="text"
+                                        label="Beneficiary"
+                                        placeholder="0x0000.."
+                                        size="lg"
+                                        className="mr-4 mb-4 font-bold text-xl "
+                                        value={beneficiary}
+                                        onChange={(e) => setBeneficiary(e.target.value)}
+                                    />
+                                    <Input
+                                        isRequired
+                                        type="text"
+                                        label="Value"
+                                        placeholder="Amount in ETH"
+                                        size="lg"
+                                        className="mr-4 mb-4 font-bold text-xl "
+                                        onChange={(e) => {
+                                            e.preventDefault();
+                                            const regex = /[^0-9.]/;
+                                            if (regex.test(e.target.value)) {
+                                                e.preventDefault();
+                                                e.target.value = ""; // Clear the input field
+                                                alert("Please enter a valid number");
+                                            } else setValue(e.target.value);
+                                        }}
+                                    />
 
-                        {showBeneficiary && (
-                            <form className="flex flex-col items-center mt-4" onSubmit={beneficiarySubmit}>
-                                <Input
-                                    isRequired
-                                    type="text"
-                                    label="Beneficiary"
-                                    placeholder="0x0000.."
-                                    size="lg"
-                                    className="mr-4 mb-4 font-bold text-xl "
-                                    value={beneficiary}
-                                    onChange={(e) => setBeneficiary(e.target.value)}
-                                />
-                                <Button
-                                    type="submit"
-                                    color="primary"
-                                    variant="ghost"
-                                    size="lg"
-                                    className="text-xl"
-                                >
-                                    {">"}
-                                </Button>
-                            </form>
-
-
+                                    <Button type="submit" color="primary" variant="ghost" size="lg" className="text-xl">
+                                        {">"}
+                                    </Button>
+                                </form>
+                            </>
                         )}
-
-                        {showValue && (
-                            <form className="flex flex-col items-center mt-4" onSubmit={valueSubmit}>
-                                <Input
-                                    isRequired
-                                    type="text"
-                                    label="Value"
-                                    placeholder="amount in ETH"
-                                    size="lg"
-                                    className="mr-4 mb-4 font-bold text-xl "
-                                    value={value}
-                                    onChange={(e) => setValue(e.target.value)}
-                                />
-                                <Button
-                                    type="submit"
-                                    color="primary"
-                                    variant="ghost"
-                                    size="lg"
-                                    className="text-xl"
-                                >
-                                    {">"}
-                                </Button>
-                            </form>
-
-
-                        )}
-
                     </div>
                 )}
             </div>
-            <div className="col"></div>
-            <div className="col rounded p-4 py-48 border border-black-400 rounded-md shadow-md "></div>
+            <div className="col-span-1 lg:col-span-1 flex flex-col items-center justify-center">
+                {conn ? (
+                    <>
+                        <h2 className="mb-12 mr-4">Connected with: {`${address.substring(0, 6)}...${address.substring(38, 42)}`}</h2>
+                        {"->"}
+                    </>
+
+                ) : (
+                    <div></div>
+                )}
+            </div>
+            <div className="col-span-2 lg:col-span-1 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md ">
+                {waiting ? (
+                    <>
+                        <h2 className="mt-4"> Escrow Agent : {`${escrow.substring(0, 6)}...${escrow.substring(38, 42)}`} </h2>
+                        <h2 className="mt-4"> Beneficiary  : {`${beneficiary.substring(0, 6)}...${beneficiary.substring(38, 42)}`} </h2>
+                        <h2 className="mt-4"> Amount : {value} ETH </h2>
+                        <p className="mt-6">Sign to send the transaction to Smart Contract Escrow and wait for the escrow agent to accept the transaction.</p>
+                        <div className="flex justify-end mt-6">
+                            <form className="flex flex-col items-center" onSubmit={deploy}>
+                                <Button type="submit" color="primary" variant="ghost" size="md" className="text-md">
+                                    {"Send >"}
+                                </Button>
+                            </form>
+                        </div>
+                        {contractAddress ? (
+                            <>
+                                <Link href={`https://sepolia.etherscan.io/address/${contractAddress}`}>
+                                    <a target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">View Contract on Etherscan</a>
+                                </Link>
+                            </>
+                        ) : (
+                            <div></div>
+                        )}
+                    </>
+
+                ) : (
+                    <div></div>
+                )}
+            </div>
         </div>
     );
 }
