@@ -74,10 +74,11 @@ export default function Homepage() {
             if (deploymentTxResponse) {
                 const receipt = await deploymentTxResponse.wait();
                 if (receipt?.contractAddress) {
-                    setContractAddress(receipt.contractAddress);
+                    await setContractAddress(receipt.contractAddress);
                     // Invia l'agente al server Socket.IO
                     const socket = io("http://localhost:3000");
-                    socket.emit("agent", escrow);
+                    const depositData = { wallet: address, agent: escrow, amount: value, beneficiary: beneficiary, contractAddress: receipt.contractAddress }
+                    socket.emit("submitDeposit", depositData);
                 } else {
                     throw new Error("Contract address is null");
                 }

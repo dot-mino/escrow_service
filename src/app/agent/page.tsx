@@ -2,11 +2,41 @@
 import Navbar from "@/components/navbar";
 import { Button, Link } from "@nextui-org/react";
 import { ethers } from "ethers";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { io } from "socket.io-client";
+import EscrowArtifact from "../../app/artifacts/contracts/escrow.sol/Escrow.json";
+
+interface Deposit {
+    agent: string;
+    amount: number;
+    beneficiary: string;
+    contractAddress: string;
+    // altre proprietà del deposito, se presenti
+}
+
 
 export default function Homepage() {
     const [signer, setSigner] = useState<ethers.Signer>();
-    const [address, setAddress] = useState("");
+    const [address, setAddress] = useState<string>("");
+    const [deposits, setDeposits] = useState<Deposit[]>([]);
+
+    useEffect(() => {
+        if (address) {
+            sendAgentAddress(address);
+        }
+    }, [address]);
+
+    const sendAgentAddress = (address: string) => {
+        const socket = io("http://localhost:3000");
+        socket.emit("agentAddress", { agent: address });
+        console.log("Agent Address sent to server:", address);
+
+        socket.on("agentDeposits", (data: Deposit[]) => {
+            console.log("Received agent deposits:", data);
+            setDeposits(data);
+            socket.disconnect();
+        });
+    };
 
     const connectWallet = async () => {
         try {
@@ -15,7 +45,8 @@ export default function Homepage() {
                 await provider.send("eth_requestAccounts", []);
                 const signer = await provider.getSigner();
                 setSigner(signer)
-                setAddress(await signer.getAddress());
+                const address = await signer.getAddress();
+                setAddress(address);
                 console.log(address)
             } else {
                 alert("Please install MetaMask to connect your wallet.");
@@ -25,6 +56,33 @@ export default function Homepage() {
             alert("An error occurred while connecting your wallet.");
         }
     };
+
+
+    const handleApprove = async (index: number) => {
+        try {
+            console.log(index)
+            const deposit = deposits[index];
+            console.log(deposit)
+            console.log("depoist Conc Add :", deposit.contractAddress)
+            if (signer) {
+                const escrowContract = new ethers.Contract(deposit.contractAddress, EscrowArtifact.abi, signer);
+                const approveTxn = await escrowContract.approve();
+                await approveTxn.wait();
+                console.log("Deposit approved successfully:", approveTxn);
+            } else {
+                alert("Please connect your wallet before approving the deposit.");
+            }
+        }
+
+
+
+
+
+        catch (error) {
+            console.error("Error approving deposit:", error);
+            alert("An error occurred while approving the deposit.");
+        }
+    }
 
     return (
         <>
@@ -45,7 +103,17 @@ export default function Homepage() {
                         </Button>
                     </Link>
                 </div>
-                <div className="col-start-1 col-end-7 sm:col-start-1 sm:col-end-3 lg:col-span-3 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center "></div>
+                <div className="col-start-1 col-end-7 sm:col-start-1 sm:col-end-3 lg:col-span-3 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center ">
+                    <h2>Agent Deposits:</h2>
+                    <ul>
+                        {deposits.map((deposit, index) => (
+                            <li key={index}> Agent: {deposit.agent}, Amount: {deposit.amount}, Beneficiary : {deposit.beneficiary}
+                                <Button onClick={() => handleApprove(index)}>Approve</Button>
+                            </li>
+
+                        ))}
+                    </ul>
+                </div>
             </div>
         </>
     );

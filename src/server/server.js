@@ -12,6 +12,7 @@ const io = require("socket.io")(server, {
     }
   });
   
+let depositData = []
 
 io.on("connection", (socket) => {
   console.log("Client connected");
@@ -20,11 +21,23 @@ io.on("connection", (socket) => {
     console.log("Client disconnected");
   });
 
-  socket.on("agent", (agent) => {
-    console.log("Received agent:", agent);
-    // Qui puoi gestire l'agente ricevuto e inviare notifiche
-    io.emit("notification", "New escrow agent added: " + agent);
+  
+  socket.on("submitDeposit", (data) => {
+    console.log("Received deposit data:", data);
+    depositData.push(data); // Memorizza i dati del deposito nell'array depositData
+    io.emit("notification", `New deposit received from wallet ${data.wallet}. Agent : ${data.agent}, Amount: ${data.amount}, Beneficiary : ${data.beneficiary} and Contract Address : ${data.contractAddress}`);
   });
+
+  socket.on("agentAddress", (data) => {
+    console.log("Received agent address:", data.agent);
+    const agentAddress = data.agent;
+    const agentDeposits = depositData.filter(deposit => deposit.agent === agentAddress);
+    console.log("Agent deposits:", agentDeposits);
+    socket.emit("agentDeposits", agentDeposits);
+  });
+
+  
+
 });
 
 const PORT = process.env.PORT || 3000;
