@@ -7,10 +7,13 @@ import { io } from "socket.io-client";
 import EscrowArtifact from "../../app/artifacts/contracts/escrow.sol/Escrow.json";
 
 interface Deposit {
+
+    wallet: string;
     agent: string;
     amount: number;
     beneficiary: string;
     contractAddress: string;
+    approved: boolean;
     // altre proprietà del deposito, se presenti
 }
 
@@ -19,6 +22,8 @@ export default function Homepage() {
     const [signer, setSigner] = useState<ethers.Signer>();
     const [address, setAddress] = useState<string>("");
     const [deposits, setDeposits] = useState<Deposit[]>([]);
+    const [conn, setConn] = useState(false);
+    const [approved, setApproved] = useState(false)
 
     useEffect(() => {
         if (address) {
@@ -48,6 +53,7 @@ export default function Homepage() {
                 const address = await signer.getAddress();
                 setAddress(address);
                 console.log(address)
+                setConn(true)
             } else {
                 alert("Please install MetaMask to connect your wallet.");
             }
@@ -63,15 +69,22 @@ export default function Homepage() {
             console.log(index)
             const deposit = deposits[index];
             console.log(deposit)
-            console.log("depoist Conc Add :", deposit.contractAddress)
+            console.log("depoist app :", deposit.approved)
             if (signer) {
                 const escrowContract = new ethers.Contract(deposit.contractAddress, EscrowArtifact.abi, signer);
                 const approveTxn = await escrowContract.approve();
                 await approveTxn.wait();
                 console.log("Deposit approved successfully:", approveTxn);
+                deposit.approved = true;
+                console.log("deposit post : ", deposit.approved)
+                const socket = io("http://localhost:3000");
+                const result = { approved: deposit.approved }
+                socket.emit("submitResult", result);
             } else {
                 alert("Please connect your wallet before approving the deposit.");
             }
+
+
         }
 
 
@@ -87,14 +100,21 @@ export default function Homepage() {
     return (
         <>
             <Navbar />
-            <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-3 gap-4 mt-12 ml-24 mr-24">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-12 ml-24 mr-24">
                 <div className="col-span-1 flex justify-center items-center">
                     <Button color="primary" variant="ghost" size="lg" className="text-xl" onClick={connectWallet}>
                         Connect
                     </Button>
                 </div>
                 <div className="col-span-2 sm:col-span-2 lg:col-span-1 flex justify-center items-center">
+                    {conn ? (
+                        <>
+                            <h2 className="mb-12 mr-4">Connected with: {`${address.substring(0, 6)}...${address.substring(38, 42)}`}</h2>
+                        </>
 
+                    ) : (
+                        <div></div>
+                    )}
                 </div>
                 <div className="col-span-1 flex justify-center items-center">
                     <Link href="/">
@@ -103,17 +123,38 @@ export default function Homepage() {
                         </Button>
                     </Link>
                 </div>
-                <div className="col-start-1 col-end-7 sm:col-start-1 sm:col-end-3 lg:col-span-3 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center ">
-                    <h2>Agent Deposits:</h2>
-                    <ul>
-                        {deposits.map((deposit, index) => (
-                            <li key={index}> Agent: {deposit.agent}, Amount: {deposit.amount}, Beneficiary : {deposit.beneficiary}
-                                <Button onClick={() => handleApprove(index)}>Approve</Button>
-                            </li>
 
-                        ))}
-                    </ul>
-                </div>
+                {approved ? (
+                    <div className="col-start-1 col-end-7 sm:col-start-1 sm:col-end-3 lg:col-span-3 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center ">
+                        Approvatoooooooooooooo
+                    </div>
+                ) : (
+                    <div className="col-start-1 col-end-7 sm:col-start-1 sm:col-end-3 lg:col-span-3 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center ">
+
+                        <ul>
+                            {deposits.map((deposit, index) => (
+                                <li key={index}>
+                                    <div>
+                                        Depositor: {deposit.wallet}
+                                    </div>
+                                    <div>
+                                        Amount: {deposit.amount},
+                                    </div>
+                                    <div>
+                                        Beneficiary : {deposit.beneficiary}
+                                    </div>
+                                    <div>
+                                        Contract Address: {deposit.contractAddress}
+                                    </div>
+
+
+                                    <Button onClick={() => handleApprove(index)}>Approve</Button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
             </div>
         </>
     );

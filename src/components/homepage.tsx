@@ -13,6 +13,7 @@ declare global {
 }
 
 export default function Homepage() {
+
     const [conn, setConn] = useState(false);
     const [waiting, setWaiting] = useState(false);
     const [address, setAddress] = useState("");
@@ -25,6 +26,20 @@ export default function Homepage() {
 
     const [contractAddress, setContractAddress] = useState("");
 
+    useEffect(() => {
+        const socket = io("http://localhost:3000");
+
+        socket.on("result", (result) => {
+            console.log("Received result:", result);
+            if (result) {
+                setWaiting(false);
+            }
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
 
     const connectWallet = async () => {
         try {
@@ -77,7 +92,7 @@ export default function Homepage() {
                     await setContractAddress(receipt.contractAddress);
                     // Invia l'agente al server Socket.IO
                     const socket = io("http://localhost:3000");
-                    const depositData = { wallet: address, agent: escrow, amount: value, beneficiary: beneficiary, contractAddress: receipt.contractAddress }
+                    const depositData = { wallet: address, agent: escrow, amount: value, beneficiary: beneficiary, contractAddress: receipt.contractAddress, approved: false }
                     socket.emit("submitDeposit", depositData);
                 } else {
                     throw new Error("Contract address is null");

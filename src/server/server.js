@@ -25,8 +25,8 @@ io.on("connection", (socket) => {
   socket.on("submitDeposit", (data) => {
     console.log("Received deposit data:", data);
     depositData.push(data); // Memorizza i dati del deposito nell'array depositData
-    io.emit("notification", `New deposit received from wallet ${data.wallet}. Agent : ${data.agent}, Amount: ${data.amount}, Beneficiary : ${data.beneficiary} and Contract Address : ${data.contractAddress}`);
-  });
+    io.emit("notification", `New deposit received from wallet ${data.wallet}. Agent : ${data.agent}, Amount: ${data.amount}, Beneficiary : ${data.beneficiary} and Contract Address: ${data.contractAddress}, Approved : ${data.approved}`);
+  }); 
 
   socket.on("agentAddress", (data) => {
     console.log("Received agent address:", data.agent);
@@ -35,6 +35,15 @@ io.on("connection", (socket) => {
     console.log("Agent deposits:", agentDeposits);
     socket.emit("agentDeposits", agentDeposits);
   });
+
+
+  socket.on("submitResult", (data) => {
+    console.log("Received result:", data);
+    const result = data.approved;
+
+    // Emetti il risultato al client "Homepage"
+    io.emit("result", result);
+});
 
   
 
