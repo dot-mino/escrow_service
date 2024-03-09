@@ -24,4 +24,7 @@ I decided to use the websockets provided by [Socket.io library](https://socket.i
 ## Future implementations
 The first thing I want to implement in the future is a notification system that allows the depositor and agent to be informed about the status of transactions quickly and easily.
 
-In addition to improving the user experience and the graphics of the application
+In addition to improving the user experience and the graphics of the application.
+
+
+And finally take advantage of the testcase functionality present in hardat, the end of creating an ad hoc testcase for this application
