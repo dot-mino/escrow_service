@@ -6,7 +6,7 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 1. Install dependencies by running npm install
 2. Start local server by running node server .js in the "server" folder
 3. Start application by running npm run dev
-4. Open [http://localhost:3000](http://localhost:3000) with your browser to interact w/ the escrow.
+4. Open [http://localhost:3001](http://localhost:3001) with your browser to interact w/ the escrow.
 
 ## Logic
 The logic of the project is very simple: the user logs on to the site via metamask and enters : 
