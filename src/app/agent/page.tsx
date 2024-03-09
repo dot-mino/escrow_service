@@ -5,6 +5,7 @@ import { ethers } from "ethers";
 import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 import EscrowArtifact from "../../app/artifacts/contracts/escrow.sol/Escrow.json";
+import Footer from "@/components/footer"
 
 interface Deposit {
 
@@ -148,6 +149,7 @@ export default function Homepage() {
 
 
             </div>
+            <Footer />
         </>
     );
 }
