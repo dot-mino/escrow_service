@@ -33,6 +33,7 @@ io.on("connection", (socket) => {
     const agentAddress = data.agent;
     const agentDeposits = depositData.filter(deposit => deposit.agent === agentAddress);
     console.log("Agent deposits:", agentDeposits);
+    console.log("Array ; ", depositData)
     socket.emit("agentDeposits", agentDeposits);
   });
 
@@ -40,9 +41,12 @@ io.on("connection", (socket) => {
   socket.on("submitResult", (data) => {
     console.log("Received result:", data);
     const result = data.approved;
-
-    // Emetti il risultato al client "Homepage"
+    const index = data.index;
+    console.log(depositData)
+    depositData.splice(index, 1);
+    console.log(depositData)
     io.emit("result", result);
+    
 });
 
   

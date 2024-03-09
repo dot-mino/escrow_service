@@ -23,7 +23,6 @@ export default function Homepage() {
     const [address, setAddress] = useState<string>("");
     const [deposits, setDeposits] = useState<Deposit[]>([]);
     const [conn, setConn] = useState(false);
-    const [approved, setApproved] = useState(false)
 
     useEffect(() => {
         if (address) {
@@ -66,36 +65,30 @@ export default function Homepage() {
 
     const handleApprove = async (index: number) => {
         try {
-            console.log(index)
             const deposit = deposits[index];
-            console.log(deposit)
-            console.log("depoist app :", deposit.approved)
             if (signer) {
                 const escrowContract = new ethers.Contract(deposit.contractAddress, EscrowArtifact.abi, signer);
                 const approveTxn = await escrowContract.approve();
                 await approveTxn.wait();
                 console.log("Deposit approved successfully:", approveTxn);
-                deposit.approved = true;
-                console.log("deposit post : ", deposit.approved)
+
+                // Rimuovi il deposito dall'elenco locale
+                const updatedDeposits = deposits.filter((_, idx) => idx !== index);
+                setDeposits(updatedDeposits);
+
+                // Invia il risultato al server
                 const socket = io("http://localhost:3000");
-                const result = { approved: deposit.approved }
+                const result = { approved: true, index: index };
                 socket.emit("submitResult", result);
             } else {
                 alert("Please connect your wallet before approving the deposit.");
             }
-
-
-        }
-
-
-
-
-
-        catch (error) {
+        } catch (error) {
             console.error("Error approving deposit:", error);
             alert("An error occurred while approving the deposit.");
         }
-    }
+    };
+
 
     return (
         <>
@@ -123,16 +116,10 @@ export default function Homepage() {
                         </Button>
                     </Link>
                 </div>
-
-                {approved ? (
-                    <div className="col-start-1 col-end-7 sm:col-start-1 sm:col-end-3 lg:col-span-3 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center ">
-                        Approvatoooooooooooooo
-                    </div>
-                ) : (
-                    <div className="col-start-1 col-end-7 sm:col-start-1 sm:col-end-3 lg:col-span-3 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center ">
-
-                        <ul>
-                            {deposits.map((deposit, index) => (
+                <div className="col-start-1 col-end-7 sm:col-start-1 sm:col-end-3 lg:col-span-3 rounded p-4 py-8 lg:py-48 border border-black-400 rounded-md shadow-md flex justify-center items-center ">
+                    <ul>
+                        {deposits.map((deposit, index) => (
+                            (!deposit.approved) ? (
                                 <li key={index}>
                                     <div>
                                         Depositor: {deposit.wallet}
@@ -147,13 +134,18 @@ export default function Homepage() {
                                         Contract Address: {deposit.contractAddress}
                                     </div>
 
-
                                     <Button onClick={() => handleApprove(index)}>Approve</Button>
                                 </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
+                            ) : (
+                                <div>
+
+                                </div>
+                            )
+
+                        ))}
+                    </ul>
+                </div>
+
 
             </div>
         </>
